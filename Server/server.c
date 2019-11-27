@@ -23,7 +23,9 @@ int loginUser(struct account* acc, char* username, char* password, int sockfd)
 {
   for (int i = 0; i < SOCKLEN; i++) {
     //printf("%s/%s/%d\n", acc[i].username, acc[i].password, acc[i].sockfd);
-    if (strcmp(acc[i].username, username) == 0 && strcmp(acc[i].password, password) == 0) {
+    if (strcmp(acc[i].username, username) == 0 &&
+	strcmp(acc[i].password, password) == 0 &&
+	acc[i].sockfd == -1) {
       acc[i].sockfd = sockfd;
       return 0;
     }
@@ -323,18 +325,84 @@ int main()
 	      login[i] = 1;
 	    }
 	    else if (login[i] == 1) {
-	      printf("%s\n", recv_buf);
+	      char send_buf[BUFSIZE];
+	      char temp_buf[BUFSIZE];
+	      char* token = NULL;
+	      
+	      strcpy(temp_buf, recv_buf);
 
-	      //if (strcmp(recv_buf, "showall/#") == 0) {
-	      //	send(i, 
-	      //}
+	      if (strcmp(recv_buf, "showall/#") == 0) {
+		strcpy(send_buf, "");
+		for (j = 0; j < SOCKLEN; j++) {
+		  if (acc[j].sockfd != -1) {
+		    strcat(send_buf, acc[j].username);
+		    strcat(send_buf, "/");
+		  }
+		}
 
-	      // Send all
-	      for(j = 0; j <= fdmax; j++) {
-		if (FD_ISSET(j, &master)) {
-		  if (j != sockfd && j != i && login[j] == 1) {
-		    if (send(j, recv_buf, nbytes_recvd, 0) == -1) {
-		      perror("send");
+	      	send(i, send_buf, sizeof(send_buf), 0);
+	      }
+	      else if (strcmp(recv_buf, "logout/#") == 0) {
+		// Log out
+		for (j = 0; j < SOCKLEN; j++) {
+		  if (acc[j].sockfd == i) {
+		    printf("%s log out\n", acc[j].username);
+		    strcpy(send_buf, acc[j].username);
+		    strcat(send_buf, " log out");
+		    acc[j].sockfd = -1;
+		    break;
+		  }
+		}
+
+		for(j = 0; j <= fdmax; j++) {
+		  if (FD_ISSET(j, &master)) {
+		    if (j != sockfd && j != i && login[j] == 1) {
+		      if (send(j, send_buf, sizeof(send_buf), 0) == -1) {
+			perror("send");
+		      }
+		    }
+		  }
+		}
+		
+		login[i] = -1;
+	      }
+	      else if ((token = strtok(temp_buf, "/")) != NULL) {
+		//printf("%s\n", token);
+		if (strcmp(token, "#private") == 0) {
+		  if ((token = strtok(NULL, "/")) != NULL ) {
+		    strcpy(username, token);
+		    
+		    if ((token = strtok(NULL, "/")) != NULL) {
+		      for (j = 0; j < SOCKLEN; j++) {
+			if (strcmp(acc[j].username, token) == 0 && acc[j].sockfd != -1) {
+			  if ((token = strtok(NULL, "/")) != NULL) {
+			    strcpy(send_buf, username);
+			    strcat(send_buf, "(secret): ");
+			    strcat(send_buf, token);
+			    printf("%s secret to %s: %s\n", username, acc[j].username, token);
+			    send(acc[j].sockfd, send_buf, sizeof(send_buf), 0);
+			    break;
+			  }
+			}
+		      }
+
+		      if (j == SOCKLEN) send(i, "#reset", 7, 0);
+		    }
+		    else send(i, "#reset", 7, 0);
+		  }
+		  else send(i, "#reset", 7, 0);
+		}
+		else {
+		  printf("%s\n", recv_buf);
+		
+		  // Send all
+		  for (j = 0; j <= fdmax; j++) {
+		    if (FD_ISSET(j, &master)) {
+		      if (j != sockfd && j != i && login[j] == 1) {
+			if (send(j, recv_buf, nbytes_recvd, 0) == -1) {
+			  perror("send");
+			}
+		      }
 		    }
 		  }
 		}
