@@ -97,23 +97,34 @@ int main()
 	    }
 	    else if (login == 1) {
 	      if (state == 5) {
-		strcpy(mess_buf, "#private/");
-		strcat(mess_buf, username);
-		strcat(mess_buf, "/");
-		strcat(mess_buf, unsecret);
-		strcat(mess_buf, "/");
-		strcat(mess_buf, send_buf);
-		send(sockfd, mess_buf, strlen(mess_buf) + 1, 0);
+		strcpy(mess_buf, send_buf);
+		
+		if ((token = strtok(mess_buf, "/")) != NULL) {
+		  if (strcmp(token, "#sendfile") == 0) {
+		    if ((token = strtok(NULL, "/")) != NULL) {
+		      
+		    }
+		  }
+		  else {	   
+		    strcpy(mess_buf, "#private/");
+		    strcat(mess_buf, username);
+		    strcat(mess_buf, "/");
+		    strcat(mess_buf, unsecret);
+		    strcat(mess_buf, "/");
+		    strcat(mess_buf, send_buf);
+		    send(sockfd, mess_buf, strlen(mess_buf) + 1, 0);
+		  }
+		}
 	      }
 	      
 	      if (state != 5) {
 		if ((token = strtok(mess_buf, "/")) != NULL) {
 		  if (strcmp(token, "#private") == 0) {
 		    if ((token = strtok(NULL, "/")) != NULL) {
-		      strcpy(send_buf, "#private/");
-		      strcat(send_buf, username);
-		      strcat(send_buf, "/");
-		      strcat(send_buf, token);
+		      //strcpy(send_buf, "#private/");
+		      //strcat(send_buf, username);
+		      //strcat(send_buf, "/");
+		      //strcat(send_buf, token);
 		      strcpy(unsecret, token);
 		      state = 5;
 		    }
