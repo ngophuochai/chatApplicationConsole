@@ -146,6 +146,7 @@ int main()
 
   printf("\nServer Waiting for client on port %d\n\n", PORT);
   fflush(stdout);
+  FD_SET(0, &master);
   FD_SET(sockfd, &master);
   
   while (1) {
@@ -161,13 +162,20 @@ int main()
     for (i = 0; i <= fdmax; i++) {
       if (FD_ISSET(i, &read_fds)) {
 	if (i == 0) {
-	  printf("Go there\n");
 	  fgets(buf, BUFSIZE, stdin);
 
 	  if (strcmp(buf, "#quit\n") == 0) {
 	    saveData(acc);
 	    close(sockfd);
 	    return 0;
+	  }
+
+	  if (strcmp(buf, "#showall\n") == 0) {
+	    for (int j = 0; j < SOCKLEN; j++) {
+	      if (acc[j].sockfd != -1) {
+		printf("  %s\n", acc[j].username);
+	      }
+	    }
 	  }
 
 	  fflush(stdin);
@@ -316,6 +324,10 @@ int main()
 	    }
 	    else if (login[i] == 1) {
 	      printf("%s\n", recv_buf);
+
+	      //if (strcmp(recv_buf, "showall/#") == 0) {
+	      //	send(i, 
+	      //}
 
 	      // Send all
 	      for(j = 0; j <= fdmax; j++) {

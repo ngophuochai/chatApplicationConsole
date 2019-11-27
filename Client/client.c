@@ -64,8 +64,13 @@ int main()
 	  if (strcmp(send_buf, "\n") != 0) {
 	    send_buf[strlen(send_buf)-1] = '\0';
 	    
-	    if (strcmp(send_buf , "#quit") == 0) {
+	    if (strcmp(send_buf, "#quit") == 0) {
 	      return 0;
+	    }
+
+	    if (strcmp(send_buf, "#showall") == 0) {
+	      strcpy(mess_buf, "showall/#");
+	      send(sockfd, mess_buf, strlen(mess_buf) + 1, 0);
 	    }
 
 	    if (state == 1) {
