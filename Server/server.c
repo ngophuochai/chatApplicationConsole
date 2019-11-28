@@ -9,7 +9,7 @@
 #include <netdb.h>
 
 #define PORT 3000
-#define BUFSIZE 1024
+#define BUFSIZE 5120
 #define SOCKLEN 100
 
 struct account {
@@ -248,13 +248,13 @@ int main()
 	      if (strcmp(token, "signup") == 0) {
 		// Check username, password
 		if ((token = strtok(NULL, "/")) == NULL) {
-		  send(i, "failsignup1", 12, 0);
+		  send(i, "failsignup", 11, 0);
 		}
 		else {
 		  strcpy(username, token);
 
 		  if ((token = strtok(NULL, "/")) == NULL) {
-		    send(i, "failsignup2", 12, 0);
+		    send(i, "failsignup", 11, 0);
 		  }
 		  else {
 		    strcpy(password, token);
@@ -264,7 +264,7 @@ int main()
 			if (acc[j].sockfd == -1 && acc[j].iscreate == -1) {
 			  strcpy(acc[j].username, username);
 			  strcpy(acc[j].password, password);
-			  acc[j].sockfd = i;
+			  //acc[j].sockfd = i;
 			  acc[j].iscreate = 0;
 			  saveData(acc);
 			  send(i, "success", 8, 0);
@@ -273,9 +273,10 @@ int main()
 		      }
 		    }
 		    else {
-		      char mess_buf[BUFSIZE];
-		      strcpy(mess_buf, "Username is duplicated!");
-		      send(i, mess_buf, sizeof(mess_buf), 0);
+		      //char mess_buf[BUFSIZE];
+		      //strcpy(mess_buf, "Username is duplicated!");
+		      //send(i, mess_buf, sizeof(mess_buf), 0);
+		      send(i, "failsignup", 11, 0);
 		    }
 		  }
 		}
@@ -283,13 +284,13 @@ int main()
 	      else if (strcmp(token, "login") == 0) {
 		// Check username, password
 		if ((token = strtok(NULL, "/")) == NULL) {
-		  send(i, "faillogin1", 11, 0);
+		  send(i, "faillogin", 10, 0);
 		}
 		else {
 		  strcpy(username, token);
 		  
 		  if ((token = strtok(NULL, "/")) == NULL) {;
-		    send(i, "faillogin2", 11, 0);
+		    send(i, "faillogin", 10, 0);
 		  }
 		  else {
 		    strcpy(password, token);
@@ -300,7 +301,7 @@ int main()
 		      login[i] = 0;
 		    }
 		    else {
-		      send(i, "faillogin3", 11, 0);
+		      send(i, "faillogin", 10, 0);
 		    }
 		  }
 		}
@@ -367,28 +368,61 @@ int main()
 		login[i] = -1;
 	      }
 	      else if ((token = strtok(temp_buf, "/")) != NULL) {
-		//printf("%s\n", token);
 		if (strcmp(token, "#private") == 0) {
 		  if ((token = strtok(NULL, "/")) != NULL ) {
-		    strcpy(username, token);
-		    
-		    if ((token = strtok(NULL, "/")) != NULL) {
-		      for (j = 0; j < SOCKLEN; j++) {
-			if (strcmp(acc[j].username, token) == 0 && acc[j].sockfd != -1) {
+		    if (strcmp(token, "#sendfile") == 0) {
+		      if ((token = strtok(NULL, "/")) != NULL) {
+			char filename[20];
+			strcpy(filename, token);
+
+			if ((token = strtok(NULL, "/")) != NULL) {
+			  strcpy(username, token);
+
 			  if ((token = strtok(NULL, "/")) != NULL) {
-			    strcpy(send_buf, username);
-			    strcat(send_buf, "(secret): ");
-			    strcat(send_buf, token);
-			    printf("%s secret to %s: %s\n", username, acc[j].username, token);
-			    send(acc[j].sockfd, send_buf, sizeof(send_buf), 0);
-			    break;
+			    for (j = 0; j < SOCKLEN; j++) {
+			      if (strcmp(acc[j].username, token) == 0 && acc[j].sockfd != -1) {
+				if ((token = strtok(NULL, "/")) != NULL) {
+				  strcpy(send_buf, "#receivefile/");
+				  strcat(send_buf, username);
+				  strcat(send_buf, " send file '");
+				  strcat(send_buf, filename);
+				  strcat(send_buf, "'/");
+				  strcat(send_buf, filename);
+				  strcat(send_buf, "/");
+				  strcat(send_buf, token);
+				  printf("%s send file '%s' to %s\n", username, filename, acc[j].username);
+				  send(acc[j].sockfd, send_buf, sizeof(send_buf), 0);
+				  
+				  break;
+				}
+			      }
+			    }
 			  }
 			}
 		      }
-
-		      if (j == SOCKLEN) send(i, "#reset", 7, 0);
 		    }
-		    else send(i, "#reset", 7, 0);
+		    else {
+		      strcpy(username, token);
+		    
+		      if ((token = strtok(NULL, "/")) != NULL) {
+			for (j = 0; j < SOCKLEN; j++) {
+			  if (strcmp(acc[j].username, token) == 0 && acc[j].sockfd != -1) {
+			    if ((token = strtok(NULL, "/")) != NULL) {
+			      strcpy(send_buf, username);
+			      strcat(send_buf, "(secret): ");
+			      strcat(send_buf, token);
+			      printf("%s secret to %s: %s\n", username, acc[j].username, token);
+			      send(acc[j].sockfd, send_buf, sizeof(send_buf), 0);
+			      
+			      break;
+			    }
+			  }
+			}
+
+			if (j == SOCKLEN) send(i, "#reset", 7, 0);
+		      }
+		      else send(i, "#reset", 7, 0);
+		    }
 		  }
 		  else send(i, "#reset", 7, 0);
 		}

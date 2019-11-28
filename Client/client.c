@@ -8,7 +8,8 @@
 #include <unistd.h>
 #include <errno.h>
 #define PORT 3000
-#define BUFSIZE 1024
+#define BUFSIZE 5120
+#define FILESIZE 5120
 			
 int main()
 {
@@ -20,6 +21,7 @@ int main()
   char unsecret[20] = "";
   int login = 0;
   int state = 0;
+  FILE* f = NULL;
 	
   //connect_request(&sockfd, &server_addr);
   if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -44,6 +46,7 @@ int main()
 
   char send_buf[BUFSIZE];
   char recv_buf[BUFSIZE];
+  char send_file[FILESIZE];
 	
   while(1) {
     read_fds = master;
@@ -57,6 +60,7 @@ int main()
       if (FD_ISSET(i, &read_fds)) {
 	//send_recv(i, sockfd);
 	char mess_buf[BUFSIZE];
+	char c = '\0';
 	int nbyte_recvd;
 	char* token = NULL;
 	
@@ -102,7 +106,26 @@ int main()
 		if ((token = strtok(mess_buf, "/")) != NULL) {
 		  if (strcmp(token, "#sendfile") == 0) {
 		    if ((token = strtok(NULL, "/")) != NULL) {
-		      
+		      if ((f = fopen(token, "rb")) == NULL) {
+			printf("Error! opening file\n");
+			// 
+		      }
+		      else {
+			fread(send_file, FILESIZE, 1, f);
+			strcpy(send_buf, "#private/");
+			strcat(send_buf, "#sendfile/");
+			strcat(send_buf, token);
+			strcat(send_buf, "/");
+			strcat(send_buf, username);
+			strcat(send_buf, "/");
+			strcat(send_buf, unsecret);
+			strcat(send_buf, "/");
+			strcat(send_buf, send_file);
+			//printf("%s\n", send_buf);
+			send(sockfd, send_buf, strlen(send_buf) + 1, 0);
+
+			if (f) fclose(f);
+		      }
 		    }
 		  }
 		  else {	   
@@ -163,6 +186,7 @@ int main()
 	  }
 	  else {
 	    recv_buf[nbyte_recvd] = '\0';
+	    strcpy(mess_buf, recv_buf);
 
 	    if (strcmp(recv_buf, "#reset") == 0) {
 	      printf("Username not available!\n");
@@ -181,7 +205,7 @@ int main()
 	      
 	      state = 0;
 	    }
-	    else if (state == 1 && strcmp(recv_buf, "fail") == 0) {
+	    else if (state == 1 && strcmp(recv_buf, "failsignup") == 0) {
 	      printf("Account already exists.\n");
 	      state = 0;
 	    }
@@ -195,8 +219,41 @@ int main()
 	      printf("Correct!\n");
 	      send(sockfd, username, sizeof(username) + 1, 0);
 	    }
-	    else {
-	      printf("%s\n", recv_buf);
+	    else if (state == 2 && strcmp(recv_buf, "faillogin") == 0) {
+	      printf("Login fail!\n");
+	      login = 0;
+	      state = 0;
+	    }
+	    else if ((token = strtok(mess_buf, "/")) != NULL) {
+	      if (strcmp(token, "#receivefile") == 0) {
+		if ((token = strtok(NULL, "/")) != NULL) {
+		  printf("%s\n", token);
+
+		  if ((token = strtok(NULL, "/")) != NULL) {
+		    FILE* f = NULL;
+		    char filename[20];
+		    strcpy(filename, token);
+		    strcat(filename, ".recv");
+
+		    if ((f = fopen(filename, "wb")) == NULL) {
+		      printf("Error! opening file\n");
+		      //
+		    }
+		    else {
+		      if ((token = strtok(NULL, "/")) != NULL) {
+			fwrite(token, strlen(token), 1, f);
+			if (f) fclose(f);
+		      }
+		      else {
+			if (f) fclose(f);
+		      }
+		    }
+		  }
+		}
+	      }
+	      else {
+		printf("%s\n", recv_buf);
+	      }
 	    }
 	    
 	    fflush(stdout);
