@@ -8,8 +8,8 @@
 #include <unistd.h>
 #include <errno.h>
 #define PORT 3000
-#define BUFSIZE 5120
-#define FILESIZE 5120
+#define BUFSIZE 1024
+#define FILESIZE 1000
 			
 int main()
 {
@@ -22,6 +22,7 @@ int main()
   int login = 0;
   int state = 0;
   FILE* f = NULL;
+  int count = 0;
 	
   //connect_request(&sockfd, &server_addr);
   if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -111,18 +112,47 @@ int main()
 			// 
 		      }
 		      else {
-			fread(send_file, FILESIZE, 1, f);
-			strcpy(send_buf, "#private/");
-			strcat(send_buf, "#sendfile/");
-			strcat(send_buf, token);
-			strcat(send_buf, "/");
-			strcat(send_buf, username);
-			strcat(send_buf, "/");
-			strcat(send_buf, unsecret);
-			strcat(send_buf, "/");
-			strcat(send_buf, send_file);
-			//printf("%s\n", send_buf);
-			send(sockfd, send_buf, strlen(send_buf) + 1, 0);
+			int opening = 0;
+			
+			while (1) {
+			  strcpy(send_buf, "#private/");
+			  strcat(send_buf, "#sendfile/");
+			  strcat(send_buf, token);
+			  strcat(send_buf, "/");
+			  
+			  if (opening == 0) {
+			    strcat(send_buf, "#open");
+			    opening = 1;
+			    send(sockfd, send_buf, strlen(send_buf) + 1, 0);
+			  }
+			  else if (opening == 1) {
+			    int b = fread(send_file, 1, sizeof(send_file), f);
+			    //strcat(send_buf, "#continue");
+			    //strcat(send_buf, "/");
+			    //strcat(send_buf, send_file);
+			    count++;
+			    printf("bye: %d\n", b);
+			    printf("strlen: %li\n", strlen(send_file));
+			    send(sockfd, send_file, b, 0);
+			  }
+			  else if (opening == -1) {
+			    printf("count: %d\n", count);
+			    strcat(send_buf, "#close");
+			    send(sockfd, "#close", 7, 0);
+			  }
+			
+			  /*strcat(send_buf, username);
+			  strcat(send_buf, "/");
+			  strcat(send_buf, unsecret);
+			  strcat(send_buf, "/");
+			  strcat(send_buf, send_file);*/
+			  //printf("%s\n", send_buf);
+			  printf("%s\n", send_buf);
+			  recv(sockfd, recv_buf, BUFSIZE, 0);
+
+			  if (opening == -1) break;
+			  if (feof(f)) opening = -1;
+			}
 
 			if (f) fclose(f);
 		      }

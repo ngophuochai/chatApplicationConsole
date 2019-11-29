@@ -9,7 +9,7 @@
 #include <netdb.h>
 
 #define PORT 3000
-#define BUFSIZE 5120
+#define BUFSIZE 1024
 #define SOCKLEN 100
 
 struct account {
@@ -101,6 +101,8 @@ int main()
   struct account acc[SOCKLEN];
   char username[20];
   char password[20];
+  FILE* f = NULL;
+  int count = 0;
 
   // Create data
   for (i = 0; i < SOCKLEN; i++) {
@@ -371,11 +373,40 @@ int main()
 		if (strcmp(token, "#private") == 0) {
 		  if ((token = strtok(NULL, "/")) != NULL ) {
 		    if (strcmp(token, "#sendfile") == 0) {
+		      //printf("%s\n", recv_buf);
 		      if ((token = strtok(NULL, "/")) != NULL) {
 			char filename[20];
 			strcpy(filename, token);
-
+			
 			if ((token = strtok(NULL, "/")) != NULL) {
+			  if (strcmp(token, "#open") == 0) {
+			    if ((f = fopen(filename, "wb")) == NULL) {
+			      printf("Error! openning file");
+			      //
+			    }
+			    else {
+			      printf("opened\n");
+			      login[i] = 2;
+			      send(i, "#opened", 8, 0);
+			    }
+			  }
+			  /*else if (strcmp(token, "#continue") == 0) {
+			    // Write code here
+			    if ((token = strtok(NULL, "/")) != NULL) {
+			      fwrite(token, strlen(token), 1, f);
+			      send(i, "#ctn", 5, 0);
+			    }
+			    }*/
+			  else if (strcmp(token, "#close") == 0) {
+			    printf("closed\n");
+			    login[i] = 1;
+			    send(i, "#closed", 8, 0);
+			    
+			    if (f) fclose(f);
+			  }
+			}
+
+			/*if ((token = strtok(NULL, "/")) != NULL) {
 			  strcpy(username, token);
 
 			  if ((token = strtok(NULL, "/")) != NULL) {
@@ -398,7 +429,7 @@ int main()
 			      }
 			    }
 			  }
-			}
+			}*/
 		      }
 		    }
 		    else {
@@ -440,6 +471,25 @@ int main()
 		    }
 		  }
 		}
+	      }
+	    }
+	    else if (login[i] == 2) {
+	      printf("%d\n", i);
+	      
+	      if (strcmp(recv_buf, "#close") == 0) {
+		printf("closed\n");
+		printf("count: %d\n", count);
+		login[i] = 1;
+		send(i, "#closed", 8, 0);
+			    
+		if (f) fclose(f);
+	      }
+	      else {
+		count++;
+		printf("bye receive: %d\n", nbytes_recvd);
+		printf("strlen: %li\n", strlen(recv_buf));
+		fwrite(recv_buf, 1, nbytes_recvd, f);
+		send(i, "#ctn", 5, 0);
 	      }
 	    }
 	  }
