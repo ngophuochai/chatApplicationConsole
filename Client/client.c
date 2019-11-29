@@ -7,10 +7,11 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <errno.h>
+
 #define PORT 3000
 #define BUFSIZE 1024
 #define FILESIZE 1000
-			
+
 int main()
 {
   int sockfd, fdmax, i;
@@ -21,11 +22,11 @@ int main()
   char unsecret[20] = "";
   int login = 0;
   int state = 0;
-  FILE* f = NULL;
+  FILE *f = NULL;
   int count = 0;
-	
+
   //connect_request(&sockfd, &server_addr);
-  if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+  if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1){
     perror("Socket");
     exit(1);
   }
@@ -33,12 +34,12 @@ int main()
   server_addr.sin_port = htons(PORT);
   server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
   memset(server_addr.sin_zero, '\0', sizeof server_addr.sin_zero);
-	
-  if(connect(sockfd, (struct sockaddr*)&server_addr, sizeof(struct sockaddr)) == -1) {
+
+  if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) == -1){
     perror("connect");
     exit(EXIT_FAILURE);
   }
-  
+
   FD_ZERO(&master);
   FD_ZERO(&read_fds);
   FD_SET(0, &master);
@@ -48,54 +49,54 @@ int main()
   char send_buf[BUFSIZE];
   char recv_buf[BUFSIZE];
   char send_file[FILESIZE];
-	
-  while(1) {
+
+  while (1){
     read_fds = master;
-    
-    if (select(fdmax+1, &read_fds, NULL, NULL, NULL) == -1){
+
+    if (select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1){
       perror("select");
       exit(EXIT_FAILURE);
-      }
-		
-    for (i = 0; i <= fdmax; i++ ) {
-      if (FD_ISSET(i, &read_fds)) {
+    }
+
+    for (i = 0; i <= fdmax; i++){
+      if (FD_ISSET(i, &read_fds)){
 	//send_recv(i, sockfd);
 	char mess_buf[BUFSIZE];
 	char c = '\0';
 	int nbyte_recvd;
-	char* token = NULL;
-	
-	if (i == 0) {
+	char *token = NULL;
+
+	if (i == 0){
 	  fgets(send_buf, BUFSIZE, stdin);
-	  
-	  if (strcmp(send_buf, "\n") != 0) {
-	    send_buf[strlen(send_buf)-1] = '\0';
+
+	  if (strcmp(send_buf, "\n") != 0){
+	    send_buf[strlen(send_buf) - 1] = '\0';
 	    strcpy(mess_buf, send_buf);
-	    
-	    if (strcmp(send_buf, "#quit") == 0) {
+
+	    if (strcmp(send_buf, "#quit") == 0){
 	      return 0;
 	    }
-	    else if (strcmp(send_buf, "#noprivate") == 0) {
+	    else if (strcmp(send_buf, "#noprivate") == 0){
 	      state = 0;
 	    }
-	    else if (strcmp(send_buf, "#3") == 0) {
+	    else if (strcmp(send_buf, "#3") == 0){
 	      strcpy(mess_buf, "showall/#");
 	      send(sockfd, mess_buf, strlen(mess_buf) + 1, 0);
 	      state = 3;
 	    }
-	    else if (state == 1) {
+	    else if (state == 1){
 	      strcpy(mess_buf, "signup/");
 	      strcat(mess_buf, send_buf);
 	      send(sockfd, mess_buf, strlen(mess_buf) + 1, 0);
 	    }
-	    else if (state == 2) {
+	    else if (state == 2){
 	      strcpy(mess_buf, "login/");
 	      strcat(mess_buf, send_buf);
 	      send(sockfd, mess_buf, strlen(mess_buf) + 1, 0);
 	      token = strtok(send_buf, "/");
 	      strcpy(username, token);
 	    }
-	    else if (strcmp(send_buf, "#4") == 0) {
+	    else if (strcmp(send_buf, "#4") == 0){
 	      strcpy(mess_buf, "logout/#");
 	      send(sockfd, mess_buf, strlen(mess_buf) + 1, 0);
 	      state = 4;
@@ -103,27 +104,31 @@ int main()
 	    else if (login == 1) {
 	      if (state == 5) {
 		strcpy(mess_buf, send_buf);
-		
+
 		if ((token = strtok(mess_buf, "/")) != NULL) {
 		  if (strcmp(token, "#sendfile") == 0) {
 		    if ((token = strtok(NULL, "/")) != NULL) {
 		      if ((f = fopen(token, "rb")) == NULL) {
 			printf("Error! opening file\n");
-			// 
+			//
 		      }
 		      else {
 			int opening = 0;
-			
+
 			while (1) {
 			  strcpy(send_buf, "#private/");
 			  strcat(send_buf, "#sendfile/");
 			  strcat(send_buf, token);
 			  strcat(send_buf, "/");
-			  
+
 			  if (opening == 0) {
 			    strcat(send_buf, "#open");
-			    opening = 1;
+			    strcat(send_buf, "/");
+			    strcat(send_buf, username);
+			    strcat(send_buf, "/");
+			    strcat(send_buf, unsecret);
 			    send(sockfd, send_buf, strlen(send_buf) + 1, 0);
+			    opening = 1;
 			  }
 			  else if (opening == 1) {
 			    int b = fread(send_file, 1, sizeof(send_file), f);
@@ -140,25 +145,28 @@ int main()
 			    strcat(send_buf, "#close");
 			    send(sockfd, "#close", 7, 0);
 			  }
-			
+
 			  /*strcat(send_buf, username);
-			  strcat(send_buf, "/");
-			  strcat(send_buf, unsecret);
-			  strcat(send_buf, "/");
-			  strcat(send_buf, send_file);*/
+			    strcat(send_buf, "/");
+			    strcat(send_buf, unsecret);
+			    strcat(send_buf, "/");
+			    strcat(send_buf, send_file);*/
 			  //printf("%s\n", send_buf);
 			  printf("%s\n", send_buf);
 			  recv(sockfd, recv_buf, BUFSIZE, 0);
 
-			  if (opening == -1) break;
-			  if (feof(f)) opening = -1;
+			  if (opening == -1)
+			    break;
+			  if (feof(f))
+			    opening = -1;
 			}
 
-			if (f) fclose(f);
+			if (f)
+			  fclose(f);
 		      }
 		    }
 		  }
-		  else {	   
+		  else {
 		    strcpy(mess_buf, "#private/");
 		    strcat(mess_buf, username);
 		    strcat(mess_buf, "/");
@@ -169,11 +177,11 @@ int main()
 		  }
 		}
 	      }
-	      
+
 	      if (state != 5) {
 		if ((token = strtok(mess_buf, "/")) != NULL) {
 		  if (strcmp(token, "#private") == 0) {
-		    if ((token = strtok(NULL, "/")) != NULL) {
+		    if ((token = strtok(NULL, "/")) != NULL){
 		      //strcpy(send_buf, "#private/");
 		      //strcat(send_buf, username);
 		      //strcat(send_buf, "/");
@@ -184,7 +192,7 @@ int main()
 		  }
 		}
 	      }
-	      
+
 	      if (state == 0) {
 		strcpy(mess_buf, username);
 		strcat(mess_buf, ": ");
@@ -194,8 +202,10 @@ int main()
 	      }
 	    }
 
-	    if (strcmp(send_buf, "#1") == 0) state = 1;
-	    if (strcmp(send_buf, "#2") == 0) state = 2;
+	    if (strcmp(send_buf, "#1") == 0)
+	      state = 1;
+	    if (strcmp(send_buf, "#2") == 0)
+	      state = 2;
 	    //if (strcmp(send_buf, "#3") == 0) state = 3;
 	    //if (strcmp(send_buf, "#4") == 0) state = 4;
 	  }
@@ -223,16 +233,16 @@ int main()
 	      state = 0;
 	    }
 	    else if (state == 3) {
-	      char* token = NULL;
-	      
+	      char *token = NULL;
+
 	      if ((token = strtok(recv_buf, "/")) != NULL) {
 		printf("  %s\n", token);
-		
+
 		while ((token = strtok(NULL, "/")) != NULL) {
 		  printf("  %s\n", token);
 		}
 	      }
-	      
+
 	      state = 0;
 	    }
 	    else if (state == 1 && strcmp(recv_buf, "failsignup") == 0) {
@@ -257,27 +267,41 @@ int main()
 	    else if ((token = strtok(mess_buf, "/")) != NULL) {
 	      if (strcmp(token, "#receivefile") == 0) {
 		if ((token = strtok(NULL, "/")) != NULL) {
-		  printf("%s\n", token);
+		  char filename[20];
+		  strcpy(filename, token);
+		  strcat(filename, ".recv");
+			
+		  if ((f = fopen(filename, "wb")) == NULL) {
+		    printf("Error! opening file\n");
+		  }
+		  else {
+		    int opening = 0;
 
-		  if ((token = strtok(NULL, "/")) != NULL) {
-		    FILE* f = NULL;
-		    char filename[20];
-		    strcpy(filename, token);
-		    strcat(filename, ".recv");
+		    while (1) {
+		      if (opening == 0) {
+			printf("opened\n");
+			opening = 1;
+			send(sockfd, "#opened", 8, 0);
+		      }
+		      else if (opening == 1) {
+			int b = recv(sockfd, recv_buf, BUFSIZE, 0);
+			      
+			if (strcmp(recv_buf, "#closed") == 0) {
+			  printf("closed\n");
+			  opening = -1;
+				
+			  //if (f) fclose(f);
+			  send(sockfd, "#closed", 8, 0);
+			}
+			else {
+			  fwrite(recv_buf, 1, b, f);
+			  send(sockfd, "#ctn", 5, 0);
+			}
+		      }
+		      else if (opening == -1) break;
+		    }
 
-		    if ((f = fopen(filename, "wb")) == NULL) {
-		      printf("Error! opening file\n");
-		      //
-		    }
-		    else {
-		      if ((token = strtok(NULL, "/")) != NULL) {
-			fwrite(token, strlen(token), 1, f);
-			if (f) fclose(f);
-		      }
-		      else {
-			if (f) fclose(f);
-		      }
-		    }
+		    if (f) fclose(f);
 		  }
 		}
 	      }
@@ -285,16 +309,15 @@ int main()
 		printf("%s\n", recv_buf);
 	      }
 	    }
-	    
 	    fflush(stdout);
 	  }
 	}
       }
     }
   }
-  
+
   printf("client-quited\n");
   close(sockfd);
-  
+
   return 0;
 }
