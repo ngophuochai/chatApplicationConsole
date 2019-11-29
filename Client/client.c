@@ -50,6 +50,17 @@ int main()
   char recv_buf[BUFSIZE];
   char send_file[FILESIZE];
 
+  // Show information
+  printf("Please enter as below to execute:\n\n");
+  printf("#1 -> Sign up\n");
+  printf("#2 -> Login\n");
+  printf("#3 -> Show all client connect\n");
+  printf("#4 -> Log out\n");
+  printf("#quit -> Exit client\n");
+  printf("#private/username -> Connect client for private\n");
+  printf("#noprivate -> Cancel connect to client private\n");
+  printf("#sendfile/filename -> Send the file to the client on private\n\n");
+
   while (1){
     read_fds = master;
 
@@ -135,15 +146,16 @@ int main()
 			    //strcat(send_buf, "#continue");
 			    //strcat(send_buf, "/");
 			    //strcat(send_buf, send_file);
-			    count++;
-			    printf("bye: %d\n", b);
-			    printf("strlen: %li\n", strlen(send_file));
+			    //count++;
+			    //printf("bye: %d\n", b);
+			    //printf("strlen: %li\n", strlen(send_file));
 			    send(sockfd, send_file, b, 0);
 			  }
 			  else if (opening == -1) {
-			    printf("count: %d\n", count);
+			    //printf("count: %d\n", count);
 			    strcat(send_buf, "#close");
 			    send(sockfd, "#close", 7, 0);
+			    break;
 			  }
 
 			  /*strcat(send_buf, username);
@@ -152,11 +164,9 @@ int main()
 			    strcat(send_buf, "/");
 			    strcat(send_buf, send_file);*/
 			  //printf("%s\n", send_buf);
-			  printf("%s\n", send_buf);
+			  //printf("%s\n", send_buf);
 			  recv(sockfd, recv_buf, BUFSIZE, 0);
 
-			  if (opening == -1)
-			    break;
 			  if (feof(f))
 			    opening = -1;
 			}
@@ -276,22 +286,23 @@ int main()
 		  }
 		  else {
 		    int opening = 0;
+		    //char temp_buf[BUFSIZE];
 
 		    while (1) {
 		      if (opening == 0) {
-			printf("opened\n");
+			//printf("opened\n");
 			opening = 1;
 			send(sockfd, "#opened", 8, 0);
 		      }
 		      else if (opening == 1) {
 			int b = recv(sockfd, recv_buf, BUFSIZE, 0);
+			//strcpy(temp_buf, recv_buf);
 			      
 			if (strcmp(recv_buf, "#closed") == 0) {
-			  printf("closed\n");
+			  //printf("closed\n");
+			  recv(sockfd, recv_buf, BUFSIZE, 0);
+			  printf("%s send file '%s'\n", recv_buf, token);
 			  opening = -1;
-				
-			  //if (f) fclose(f);
-			  send(sockfd, "#closed", 8, 0);
 			}
 			else {
 			  fwrite(recv_buf, 1, b, f);

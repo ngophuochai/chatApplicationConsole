@@ -160,6 +160,11 @@ int main()
   FD_SET(0, &master);
   FD_SET(sockfd, &master);
 
+  // Show information
+  printf("Please enter as below to execute:\n\n");
+  printf("#showall -> Show all client connect\n");
+  printf("#quit -> Exit server\n\n");
+
   while (1){
     read_fds = master;
 
@@ -409,7 +414,7 @@ int main()
 				      printf("%s send file '%s' to %s\n", username, filename, acc[j].username);
 				      send(acc[j].sockfd, send_buf, sizeof(send_buf), 0);
 				      sockfd_sf = acc[j].sockfd;
-				      login[j] = 1;
+				      login[sockfd_sf] = 3;
 				      break;
 				    }
 				  }
@@ -421,7 +426,7 @@ int main()
 			    }
 			  }
 			  else if (strcmp(token, "#close") == 0) {
-			    printf("closed\n");
+			    //printf("closed\n");
 			    login[i] = 1;
 			    send(i, "#closed", 8, 0);
 
@@ -476,21 +481,33 @@ int main()
 	      }
 	    }
 	    else if (login[i] == 2) {
-	      printf("%d\n", i);
+	      //printf("%d\n", i);
 	      if (strcmp(recv_buf, "#close") == 0) {
-		printf("closed\n");
-		printf("count: %d\n", count);
+		//printf("closed\n");
+		//printf("count: %d\n", count);
 		login[i] = 1;
-		send(i, "#closed", 8, 0);
+		login[sockfd_sf] = 1;
+		//send(i, "#closed", 8, 0);
 		send(sockfd_sf, "#closed", 8, 0);
+		
+		for (j = 0; j < SOCKLEN; j++) {
+		  if (acc[j].sockfd == i && acc[j].iscreate == 0) {
+		    //char temp_buf[BUFSIZE];
+		    //strcpy(temp_buf, "#closed/");
+		    //strcpy(temp_buf, acc[j].username);
+		    //send(sockfd_sf, temp_buf, strlen(temp_buf) + 1, 0);
+		    send(sockfd_sf, acc[j].username, strlen(acc[j].username) + 1, 0);
+		    break;
+		  }
+		}
 		sockfd_sf = -1;
 
 		if (f) fclose(f);
 	      }
 	      else {
-		count++;
-		printf("bye receive: %d\n", nbytes_recvd);
-		printf("strlen: %li\n", strlen(recv_buf));
+		//count++;
+		//printf("bye receive: %d\n", nbytes_recvd);
+		//printf("strlen: %li\n", strlen(recv_buf));
 		fwrite(recv_buf, 1, nbytes_recvd, f);
 		send(i, "#ctn", 5, 0);
 		send(sockfd_sf, recv_buf, nbytes_recvd, 0);
